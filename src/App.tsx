@@ -44,12 +44,27 @@ const operators = [
   { value: "||", display: "ИЛИ" },
 ];
 
+type Rule = {
+  id: string;
+  codeBlocks: Array<{
+    type: "variable" | "operator";
+    value: string;
+    display?: string;
+  }>;
+};
+
 function App() {
-  const [codeBlocks, setCodeBlocks] = useState<
-    Array<{ type: "variable" | "operator"; value: string; display?: string }>
-  >([]);
-  const [validationResult, setValidationResult] = useState("");
+  const [rules, setRules] = useState<Rule[]>([]);
+  const [currentRule, setCurrentRule] = useState<Rule>({
+    id: "1",
+    codeBlocks: [],
+  });
+  const [validationResults, setValidationResults] = useState<
+    Record<string, string>
+  >({});
   const [error, setError] = useState("");
+  const [currentRuleValidation, setCurrentRuleValidation] =
+    useState<string>("");
 
   const getVariableDisplay = (code: string) => {
     const allVariables = [...productVariables, ...factoryVariables];
@@ -57,46 +72,103 @@ function App() {
   };
 
   const insertVariable = (variableCode: string) => {
-    setCodeBlocks(prev => [
+    setCurrentRule(prev => ({
       ...prev,
-      {
-        type: "variable",
-        value: variableCode,
-        display: getVariableDisplay(variableCode),
-      },
-    ]);
+      codeBlocks: [
+        ...prev.codeBlocks,
+        {
+          type: "variable",
+          value: variableCode,
+          display: getVariableDisplay(variableCode),
+        },
+      ],
+    }));
   };
 
   const insertOperator = (operator: { value: string; display: string }) => {
-    setCodeBlocks(prev => [
+    setCurrentRule(prev => ({
       ...prev,
-      {
-        type: "operator",
-        value: operator.value,
-        display: operator.display,
-      },
-    ]);
+      codeBlocks: [
+        ...prev.codeBlocks,
+        {
+          type: "operator",
+          value: operator.value,
+          display: operator.display,
+        },
+      ],
+    }));
   };
 
   const removeBlock = (index: number) => {
-    setCodeBlocks(prev => prev.filter((_, i) => i !== index));
+    setCurrentRule(prev => ({
+      ...prev,
+      codeBlocks: prev.codeBlocks.filter((_, i) => i !== index),
+    }));
   };
 
-  const validateFunction = () => {
-    try {
-      const codeString = codeBlocks.map(block => block.value).join(" ");
+  const validateCurrentRule = () => {
+    if (currentRule.codeBlocks.length === 0) {
+      setError("Правило не может быть пустым");
+      return false;
+    }
 
+    try {
+      const codeString = currentRule.codeBlocks
+        .map(block => block.value)
+        .join(" ");
       const func = new Function("product", "factory", `return (${codeString})`);
       const result = func(sampleProduct, sampleFactory);
-      setValidationResult(
+      setCurrentRuleValidation(
         result ? "✅ Условие выполняется" : "❌ Условие не выполняется"
       );
+      setError("");
+      return true;
+    } catch (err) {
+      setError(
+        `Ошибка: ${err instanceof Error ? err.message : "Неверный синтаксис"}`
+      );
+      setCurrentRuleValidation("");
+      return false;
+    }
+  };
+
+  const addRule = () => {
+    if (validateCurrentRule()) {
+      setRules(prev => [...prev, currentRule]);
+      setCurrentRule({
+        id: String(Date.now()),
+        codeBlocks: [],
+      });
+      setCurrentRuleValidation("");
+      setError("");
+    }
+  };
+
+  const removeRule = (ruleId: string) => {
+    setRules(prev => prev.filter(rule => rule.id !== ruleId));
+    setValidationResults(prev => {
+      const newResults = { ...prev };
+      delete newResults[ruleId];
+      return newResults;
+    });
+  };
+
+  const validateRule = (rule: Rule) => {
+    try {
+      const codeString = rule.codeBlocks.map(block => block.value).join(" ");
+      const func = new Function("product", "factory", `return (${codeString})`);
+      const result = func(sampleProduct, sampleFactory);
+      setValidationResults(prev => ({
+        ...prev,
+        [rule.id]: result
+          ? "✅ Условие выполняется"
+          : "❌ Условие не выполняется",
+      }));
       setError("");
     } catch (err) {
       setError(
         `Ошибка: ${err instanceof Error ? err.message : "Неверный синтаксис"}`
       );
-      setValidationResult("");
     }
   };
 
@@ -146,24 +218,65 @@ function App() {
           </div>
         </div>
 
-        <div className="code-blocks-container">
-          {codeBlocks.map((block, index) => (
-            <div
-              key={index}
-              className={`code-block ${block.type}-block`}
-              onClick={() => removeBlock(index)}
-              title="Нажмите чтобы удалить"
-            >
-              {block.display || block.value}
+        <div className="current-rule">
+          <h3>Текущее правило:</h3>
+          <div className="code-blocks-container">
+            {currentRule.codeBlocks.map((block, index) => (
+              <div
+                key={index}
+                className={`code-block ${block.type}-block`}
+                onClick={() => removeBlock(index)}
+                title="Нажмите чтобы удалить"
+              >
+                {block.display || block.value}
+              </div>
+            ))}
+          </div>
+          <div className="rule-actions">
+            <button onClick={validateCurrentRule} className="validate-button">
+              Проверить
+            </button>
+            <button onClick={addRule} className="add-rule-button">
+              Добавить правило
+            </button>
+          </div>
+          {currentRuleValidation && (
+            <div className="result">{currentRuleValidation}</div>
+          )}
+        </div>
+
+        <div className="rules-list">
+          <h3>Существующие правила:</h3>
+          {rules.map(rule => (
+            <div key={rule.id} className="rule-item">
+              <div className="code-blocks-container">
+                {rule.codeBlocks.map((block, index) => (
+                  <div key={index} className={`code-block ${block.type}-block`}>
+                    {block.display || block.value}
+                  </div>
+                ))}
+              </div>
+              <div className="rule-actions">
+                <button
+                  onClick={() => validateRule(rule)}
+                  className="validate-button"
+                >
+                  Проверить
+                </button>
+                <button
+                  onClick={() => removeRule(rule.id)}
+                  className="remove-rule-button"
+                >
+                  Удалить
+                </button>
+              </div>
+              {validationResults[rule.id] && (
+                <div className="result">{validationResults[rule.id]}</div>
+              )}
             </div>
           ))}
         </div>
 
-        <button onClick={validateFunction} className="validate-button">
-          Проверить
-        </button>
-
-        {validationResult && <div className="result">{validationResult}</div>}
         {error && <div className="error">{error}</div>}
       </div>
 
@@ -252,6 +365,46 @@ function App() {
         .error {
           color: red;
           margin-top: 10px;
+        }
+        
+        .current-rule {
+          margin: 20px 0;
+          padding: 20px;
+          border: 1px solid #ddd;
+          border-radius: 4px;
+        }
+        
+        .rule-item {
+          margin: 20px 0;
+          padding: 20px;
+          border: 1px solid #ddd;
+          border-radius: 4px;
+        }
+        
+        .rule-actions {
+          display: flex;
+          gap: 10px;
+          margin-top: 10px;
+        }
+        
+        .add-rule-button {
+          padding: 10px 20px;
+          background-color: #2196F3;
+          color: white;
+          border: none;
+          border-radius: 4px;
+          cursor: pointer;
+          font-size: 16px;
+        }
+        
+        .remove-rule-button {
+          padding: 10px 20px;
+          background-color: #f44336;
+          color: white;
+          border: none;
+          border-radius: 4px;
+          cursor: pointer;
+          font-size: 16px;
         }
       `}</style>
     </>
