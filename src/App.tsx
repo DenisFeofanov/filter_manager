@@ -54,6 +54,16 @@ type Rule = {
 };
 
 function App() {
+  const [sampleProductText, setSampleProductText] = useState(
+    JSON.stringify(sampleProduct, null, 2)
+  );
+  const [sampleFactoryText, setSampleFactoryText] = useState(
+    JSON.stringify(sampleFactory, null, 2)
+  );
+  const [currentSampleProduct, setCurrentSampleProduct] =
+    useState(sampleProduct);
+  const [currentSampleFactory, setCurrentSampleFactory] =
+    useState(sampleFactory);
   const [rules, setRules] = useState<Rule[]>([]);
   const [currentRule, setCurrentRule] = useState<Rule>({
     id: "1",
@@ -117,7 +127,7 @@ function App() {
         .map(block => block.value)
         .join(" ");
       const func = new Function("product", "factory", `return (${codeString})`);
-      const result = func(sampleProduct, sampleFactory);
+      const result = func(currentSampleProduct, currentSampleFactory);
       setCurrentRuleValidation(
         `${result ? "✅" : "❌"} Вычисление: ${codeString} = ${result}`
       );
@@ -157,7 +167,7 @@ function App() {
     try {
       const codeString = rule.codeBlocks.map(block => block.value).join(" ");
       const func = new Function("product", "factory", `return (${codeString})`);
-      const result = func(sampleProduct, sampleFactory);
+      const result = func(currentSampleProduct, currentSampleFactory);
       setValidationResults(prev => ({
         ...prev,
         [rule.id]: `${
@@ -172,9 +182,58 @@ function App() {
     }
   };
 
+  const updateSampleProduct = () => {
+    try {
+      const parsed = JSON.parse(sampleProductText);
+      setCurrentSampleProduct(parsed);
+      setError("");
+    } catch (err) {
+      console.error(err);
+      setError("Ошибка в формате объекта продукта");
+    }
+  };
+
+  const updateSampleFactory = () => {
+    try {
+      const parsed = JSON.parse(sampleFactoryText);
+      setCurrentSampleFactory(parsed);
+      setError("");
+    } catch (err) {
+      console.error(err);
+      setError("Ошибка в формате объекта завода");
+    }
+  };
+
   return (
     <>
       <div className="card">
+        <h2>Тестовые объекты</h2>
+        <div className="sample-objects">
+          <div className="sample-object">
+            <h3>Объект продукта:</h3>
+            <textarea
+              value={sampleProductText}
+              onChange={e => setSampleProductText(e.target.value)}
+              className="sample-textarea"
+            />
+            <button onClick={updateSampleProduct} className="update-button">
+              Обновить продукт
+            </button>
+          </div>
+
+          <div className="sample-object">
+            <h3>Объект завода:</h3>
+            <textarea
+              value={sampleFactoryText}
+              onChange={e => setSampleFactoryText(e.target.value)}
+              className="sample-textarea"
+            />
+            <button onClick={updateSampleFactory} className="update-button">
+              Обновить завод
+            </button>
+          </div>
+        </div>
+
         <h2>Доступные переменные</h2>
 
         <div className="variables-section">
@@ -407,6 +466,41 @@ function App() {
           border-radius: 4px;
           cursor: pointer;
           font-size: 16px;
+        }
+        
+        .sample-objects {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 20px;
+          margin-bottom: 20px;
+        }
+        
+        .sample-object {
+          text-align: left;
+        }
+        
+        .sample-textarea {
+          width: 100%;
+          height: 200px;
+          font-family: monospace;
+          padding: 10px;
+          margin-bottom: 10px;
+          border: 1px solid #ddd;
+          border-radius: 4px;
+          resize: vertical;
+        }
+        
+        .update-button {
+          padding: 8px 16px;
+          background-color: #4CAF50;
+          color: white;
+          border: none;
+          border-radius: 4px;
+          cursor: pointer;
+        }
+        
+        .update-button:hover {
+          background-color: #45a049;
         }
       `}</style>
     </>
