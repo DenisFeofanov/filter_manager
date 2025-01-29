@@ -119,7 +119,7 @@ function App() {
       const func = new Function("product", "factory", `return (${codeString})`);
       const result = func(sampleProduct, sampleFactory);
       setCurrentRuleValidation(
-        result ? "✅ Условие выполняется" : "❌ Условие не выполняется"
+        `${result ? "✅" : "❌"} Вычисление: ${codeString} = ${result}`
       );
       setError("");
       return true;
@@ -160,9 +160,9 @@ function App() {
       const result = func(sampleProduct, sampleFactory);
       setValidationResults(prev => ({
         ...prev,
-        [rule.id]: result
-          ? "✅ Условие выполняется"
-          : "❌ Условие не выполняется",
+        [rule.id]: `${
+          result ? "✅" : "❌"
+        } Вычисление: ${codeString} = ${result}`,
       }));
       setError("");
     } catch (err) {
@@ -318,6 +318,7 @@ function App() {
         }
         .code-blocks-container {
           min-height: 60px;
+          max-height: 60px;
           padding: 10px;
           border: 2px dashed #ddd;
           border-radius: 4px;
@@ -326,6 +327,7 @@ function App() {
           flex-wrap: wrap;
           gap: 10px;
           align-items: center;
+          overflow-y: auto;
         }
         .code-block {
           padding: 8px 12px;
